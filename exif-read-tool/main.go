@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/dsoprea/go-exif"
+	"github.com/hoangnguyen0709/go-exif"
 	"github.com/dsoprea/go-logging"
 )
 

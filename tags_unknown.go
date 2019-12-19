@@ -22,6 +22,13 @@ const (
 )
 
 const (
+	TagUnknownType_a300_FileSource_UNDEFINED = iota
+	TagUnknownType_a300_FileSource_1
+	TagUnknownType_a300_FileSource_2
+	TagUnknownType_a300_FileSource_3
+)
+
+const (
 	TagUnknownType_9101_ComponentsConfiguration_Channel_Y  = 0x1
 	TagUnknownType_9101_ComponentsConfiguration_Channel_Cb = 0x2
 	TagUnknownType_9101_ComponentsConfiguration_Channel_Cr = 0x3
@@ -49,6 +56,20 @@ var (
 		TagUnknownType_9298_UserComment_Encoding_JIS:       []byte{'J', 'I', 'S', 0, 0, 0, 0, 0},
 		TagUnknownType_9298_UserComment_Encoding_UNICODE:   []byte{'U', 'n', 'i', 'c', 'o', 'd', 'e', 0},
 		TagUnknownType_9298_UserComment_Encoding_UNDEFINED: []byte{0, 0, 0, 0, 0, 0, 0, 0},
+	}
+
+	TagUnknownType_a300_FileSource_Names = map[int]string{
+		TagUnknownType_a300_FileSource_1:         "Film Scanner",
+		TagUnknownType_a300_FileSource_2:         "Reflection Print Scanner",
+		TagUnknownType_a300_FileSource_3:         "Digital Camera",
+		TagUnknownType_a300_FileSource_UNDEFINED: "UNDEFINED",
+	}
+
+	TagUnknownType_a300_FileSource_Map = map[int][]byte{
+		TagUnknownType_a300_FileSource_1:         []byte{1},
+		TagUnknownType_a300_FileSource_2:         []byte{2},
+		TagUnknownType_a300_FileSource_3:         []byte{3},
+		TagUnknownType_a300_FileSource_UNDEFINED: []byte{0},
 	}
 
 	TagUnknownType_9101_ComponentsConfiguration_Names = map[int]string{
@@ -131,6 +152,19 @@ func (mn TagUnknownType_927C_MakerNote) String() string {
 
 func (uc TagUnknownType_927C_MakerNote) ValueBytes() (value []byte, err error) {
 	return uc.MakerNoteBytes, nil
+}
+
+type TagUnknownType_a300_FileSource struct {
+	FileSourceType  int
+	FileSourceBytes []byte
+}
+
+func (fs TagUnknownType_a300_FileSource) String() string {
+	return fmt.Sprintf("FileSource<ID=[%s] BYTES=%v>", TagUnknownType_a300_FileSource_Names[fs.FileSourceType], fs.FileSourceBytes)
+}
+
+func (fs TagUnknownType_a300_FileSource) ValueBytes() (value []byte, err error) {
+	return fs.FileSourceBytes, nil
 }
 
 type TagUnknownType_9101_ComponentsConfiguration struct {
@@ -309,6 +343,33 @@ func UndefinedValue(ifdPath string, tagId uint16, valueContext ValueContext, byt
 			}
 
 			return cc, nil
+		} else if tagId == 0xa300 {
+			// FileSource
+
+			tt := NewTagType(TypeByte, byteOrder)
+
+			valueBytes, err := tt.ReadByteValues(valueContext)
+			log.PanicIf(err)
+
+			unknownUc := TagUnknownType_a300_FileSource{
+				FileSourceType:  TagUnknownType_a300_FileSource_UNDEFINED,
+				FileSourceBytes: []byte{},
+			}
+
+			for fileSourceId, fileSourceBytes := range TagUnknownType_a300_FileSource_Map {
+				fmt.Println(fileSourceBytes)
+				if bytes.Compare(valueBytes, fileSourceBytes) == 0 {
+					uc := TagUnknownType_a300_FileSource{
+						FileSourceType:  fileSourceId,
+						FileSourceBytes: valueBytes,
+					}
+
+					return uc, nil
+				}
+			}
+
+			typeLogger.Warningf(nil, "File-source encoding not valid. Returning 'unknown' type (the default).")
+			return unknownUc, nil
 		}
 	} else if ifdPath == IfdPathStandardGps {
 		if tagId == 0x001c {
